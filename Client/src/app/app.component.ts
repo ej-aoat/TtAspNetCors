@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { lastValueFrom, throwError } from 'rxjs';
 import { catchError, map, retry, timeout } from 'rxjs/operators';
+import * as signalR from '@microsoft/signalr';
 
 @Component({
   selector: 'app-root',
@@ -11,26 +12,36 @@ import { catchError, map, retry, timeout } from 'rxjs/operators';
 export class AppComponent implements OnInit {
   title = 'Client';
 
+  private mHubConnection?: signalR.HubConnection;
 
-  constructor(protected http: HttpClient){
+  constructor(protected http: HttpClient) {
 
   }
 
-  ngOnInit(): void {
-    const url = "http://localhost:30202/WeatherForecast";
-    // this.http
-    //     .post(url, "", {
-    //       responseType: 'text',
-    //       // headers: new HttpHeaders({
-    //       //   'Access-Control-Allow-Origin': '*',
-    //       // }),
-    //     })
-    //     .pipe(timeout(2500), retry(3), catchError(this.handleError))
-    //     .pipe(map((response) => response))
+  async ngOnInit(): Promise<void> {
+    const url = "http://dev.hexawire.niji.ga:30202/Token/api/Token";
+    console.log("ngOnInit");
+    const accessToken = await lastValueFrom(
+      this.http.post(url, null, { responseType: 'text' })
+        .pipe(timeout(2500), retry(3), catchError(this.handleError))
+        .pipe(map((response) => response))
+  );
 
-    this.http.get(url)
-      .pipe(timeout(2500), retry(3), catchError(this.handleError))
-      .pipe(map((response) => console.log("response=>" + response)));
+    console.log("アクセストークン: " + accessToken);
+
+    this.mHubConnection = new signalR.HubConnectionBuilder()
+      .withUrl("http://dev.hexawire.niji.ga:30202" + '/front', {
+        accessTokenFactory: () => accessToken,
+      })
+      .withAutomaticReconnect() // 自動再接続
+      .build();
+
+    try {
+      await this.mHubConnection.start().catch(err => console.error(err));;
+    } catch (error) {
+      console.error('An error occurred:', error);
+      return;
+    }
   }
 
   private handleError(error: HttpErrorResponse) {

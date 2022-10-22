@@ -1,0 +1,10 @@
+// プロジェクトから直接ランチャ「.NET Core Launch (web) with Remote」で起動した場合は、
+// 下記の変数を有効にしてください。
+@hostname = localhost
+@port = 30202
+
+@host = {{hostname}}:{{port}}
+
+###
+# 認証トークンを発行します。
+POST http://{{host}}/Token/api/Token
